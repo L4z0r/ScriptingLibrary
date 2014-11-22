@@ -231,7 +231,6 @@ namespace Scripting.Controls
 
         #region Constants
 
-        Color line_color = Color.FromArgb(230, 230, 230);
         const RegexOptions option = RegexOptions.Multiline;
         const AnchorStyles anchor = AnchorStyles.Bottom | AnchorStyles.Top
                 | AnchorStyles.Left | AnchorStyles.Right;
@@ -244,6 +243,7 @@ namespace Scripting.Controls
 
         // Determines if a listbox is opened currently
         private bool intellisenseActive;
+        private bool displayedOnTop;
 
         // Subcontrols of the codeeditor
         private ScriptListBox intellisenseBox;
@@ -254,6 +254,7 @@ namespace Scripting.Controls
         private Intellisense autocompleteWords;
 
         // Current line selection
+        private Color lineColor;
         private Color lineBorderColor;
         private Color lineBackColor;
 
@@ -298,6 +299,21 @@ namespace Scripting.Controls
             }
         }
 
+
+        [Category("CodeEditor-Properties")]
+        [Description("Line between lines and textbox.")]
+        public Color LineColor
+        {
+            get
+            {
+                return lineColor;
+            }
+            set
+            {
+                lineColor = value;
+            }
+        }
+
         [Category("CodeEditor-Properties")]
         [Description("Bordercolor of selected line.")]
         public Color LineBorderColor
@@ -325,21 +341,6 @@ namespace Scripting.Controls
             {
                 lineBackColor = value;
                 this.Invalidate();
-            }
-        }
-
-        [Category("CodeEditor-Properties")]
-        [Description("Color of line between numbers and textbox.")]
-        public Color LineSeperator
-        {
-            get
-            {
-                return scriptBox.LineColor;
-            }
-            set
-            {
-                scriptBox.LineColor = value;
-                scriptBox.Invalidate();
             }
         }
 
@@ -382,6 +383,7 @@ namespace Scripting.Controls
         {
             // CodeEditor properties
             this.intellisenseActive = false;
+            this.displayedOnTop = false;
             this.SetStyle(style, true);
             this.DoubleBuffered = true;
             this.Anchor = anchor;
@@ -390,14 +392,15 @@ namespace Scripting.Controls
             this.codeBackColor = Color.FromArgb(244, 244, 244);
             this.lineBorderColor = Color.FromArgb(51, 153, 255);
             this.lineBackColor = Color.FromArgb(158, 206, 255);
+            this.lineColor = Color.FromArgb(230, 230, 230);
 
             this.scriptBox = new ScriptTextBox();
             this.ruleSets = new List<SyntaxHighlighting>();
 
             // Predefines some variables
-            var sze = new Size(Width - 49, Height -2);
+            var sze = new Size(Width - 53, Height - 2);
             var fnt = new Font("Consolas", 9.75f);
-            var pnt = new Point(48, 1);
+            var pnt = new Point(52, 1);
             var bds = BorderStyle.None;
 
             // ScriptBox properties
@@ -409,7 +412,6 @@ namespace Scripting.Controls
             this.scriptBox.Location = pnt;
             this.scriptBox.Size = sze;
 
-            this.scriptBox.LineColor = line_color;
             this.scriptBox.BorderStyle = bds;
             this.scriptBox.Font = fnt;
 
@@ -542,10 +544,23 @@ namespace Scripting.Controls
                                     this.intellisenseBox = new ScriptListBox(ParseItems(founditems, 0));
 
                                     // Predefines some variables
+                                    var textheight = MeasureScriptBoxHeight();
                                     var caretpoint = this.scriptBox.CaretPoint;
                                     var point = new Point(caretpoint.X,
-                                        caretpoint.Y + MeasureScriptBoxHeight());
+                                        caretpoint.Y + textheight);
                                     var size = new Size(200, (8 + (16 * foundcount)));
+
+                                    // If the intellibox is not fitting the space
+                                    // just display it on the top!
+                                    if (point.Y + size.Height > this.Height)
+                                    {
+                                        displayedOnTop = true;
+                                        point.Y = (scriptBox.Height - ((scriptBox.Height - caretpoint.Y) + size.Height));
+                                    }
+                                    else
+                                    {
+                                        displayedOnTop = false;
+                                    }
 
                                     // Sets properties for intellibox
                                     this.intellisenseBox.Size = size;
@@ -564,10 +579,23 @@ namespace Scripting.Controls
                                     this.intellisenseBox.Words = ParseWords(founditems, 0);
 
                                     // Update the position & size
+                                    var textheight = MeasureScriptBoxHeight();
                                     var caretpoint = this.scriptBox.CaretPoint;
                                     var point = new Point(caretpoint.X,
                                         caretpoint.Y + MeasureScriptBoxHeight());
                                     var size = new Size(200, (8 + (16 * foundcount)));
+
+                                    // If the intellibox is not fitting the space
+                                    // just display it on the top!
+                                    if (point.Y + size.Height > this.Height)
+                                    {
+                                        displayedOnTop = true;
+                                        point.Y = (scriptBox.Height - ((scriptBox.Height - caretpoint.Y) + size.Height));
+                                    }
+                                    else
+                                    {
+                                        displayedOnTop = false;
+                                    }
 
                                     this.intellisenseBox.Size = size;
                                     this.intellisenseBox.Location = point;
@@ -601,6 +629,14 @@ namespace Scripting.Controls
                         }
                     }
                 }
+                else
+                {
+                    // No text, no intellisense^^
+                    if (this.intellisenseActive == true)
+                    {
+                        this.DisposeIntellisense();
+                    }
+                }
             }
             finally
             {
@@ -631,11 +667,12 @@ namespace Scripting.Controls
         }
 
         // We focus the intellibox, as soon as we press the down arrow.
+        // Or if its displayed on top, the up arrow.
         private void OnKeyDown(object obj, KeyEventArgs arg)
         {
             // Variables (readability) =D
+            var down = (displayedOnTop ? Keys.Up : Keys.Down);
             var data = arg.KeyData;
-            var down = Keys.Down;
             var tab = Keys.Tab;
             var txt = ("    ");
 
@@ -676,11 +713,11 @@ namespace Scripting.Controls
         private void OnMenuKey(object obj, KeyEventArgs arg)
         {
             // Variables (Readability) =D
+            var ups = (displayedOnTop ? Keys.Down : Keys.Up);
             var data = arg.KeyData;
             var back = Keys.Back;
             var esc = Keys.Escape;
             var ent = Keys.Enter;
-            var ups = Keys.Up;
 
             // Checks for various stuff and does some useful actions
             if (data == esc || data == back)
@@ -692,7 +729,9 @@ namespace Scripting.Controls
             {
                 // Only hide the intellibox, if the FIRST
                 // item is selected -> else act normal
-                if (this.intellisenseBox.SelectedIndex == 0)
+                int maxitems = (intellisenseBox.Items.Count - 1);
+                int outindex = (displayedOnTop ? maxitems : 0);
+                if (this.intellisenseBox.SelectedIndex == outindex)
                 {
                     this.scriptBox.Focus();
                 }
@@ -760,11 +799,18 @@ namespace Scripting.Controls
         {
             var rect = new Rectangle(0, 0, base.Width - 1, base.Height - 1);
             var rect2 = new Rectangle(1, 1, base.Width - 2, base.Height - 2);
+            var rect3 = new Rectangle(49, 1, base.Width - 50, base.Height - 2);
+            var pnt = new Point(48, 1); var pnt2 = new Point(48, base.Height - 2);
+
+            var bak = new SolidBrush(Color.White);
             var bru = new SolidBrush(codeBackColor);
             var pen = new Pen(codeBorderColor);
+            var lne = new Pen(lineColor);
 
             e.Graphics.FillRectangle(bru, rect2);
+            e.Graphics.FillRectangle(bak, rect3);
             e.Graphics.DrawRectangle(pen, rect);
+            e.Graphics.DrawLine(lne, pnt, pnt2);
 
             bru.Dispose();
             pen.Dispose();
@@ -785,12 +831,13 @@ namespace Scripting.Controls
             int currLine = scriptBox.GetLineFromCharIndex(selection);
 
             // Draws the line-selection
-            var bdrect = new Rectangle(1, (currLine * scriptheight + 1), 46, scriptheight - 1);
-            var inrect = new Rectangle(2, (currLine * scriptheight + 2), 46, scriptheight - 2);
+            int selLine = (currLine - firstLine);
+            var txt = new SolidBrush(this.scriptBox.ForeColor);
+            var bdrect = new Rectangle(1, (selLine * scriptheight + 1), 46, scriptheight - 1);
+            var inrect = new Rectangle(2, (selLine * scriptheight + 2), 46, scriptheight - 2);
 
             var pen = new Pen(this.lineBorderColor);
             var bru = new SolidBrush(this.lineBackColor);
-            var txt = new SolidBrush(this.scriptBox.ForeColor);
 
             e.Graphics.FillRectangle(bru, inrect);
             e.Graphics.DrawRectangle(pen, bdrect);
