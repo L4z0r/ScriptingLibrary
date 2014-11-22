@@ -34,9 +34,9 @@ namespace Scripting.Controls
         #region Constants
 
         // Improves readability
-        const Point empty = Point.Empty;
-        const Color color = Color.FromArgb(230, 230, 230);
-        const ControlStyles style = ControlStyles.OptimizedDoubleBuffer
+        Point empty = Point.Empty;
+        Color color = Color.FromArgb(230, 230, 230);
+        ControlStyles style = ControlStyles.OptimizedDoubleBuffer
             | ControlStyles.AllPaintingInWmPaint | ControlStyles.Opaque;
 
         #endregion

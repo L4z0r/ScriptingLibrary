@@ -20,72 +20,40 @@ using System.Text.RegularExpressions;
 
 namespace Scripting.Controls
 {
-    public class SyntaxHighlighting : IDisposable
+    public class Intellisense : IDisposable
     {
-        #region Constants
-
-        Color empty = Color.Empty;
-
-        #endregion
-
         #region Variables
 
-        // If this SH is disposed
+        // Is this disposed?
         private bool disposed;
 
-        // The pattern of the wanted chars
-        private string regex;
-
-        // All stuff for transforming a text
-        private Font font;
-        private Color forecolor;
-        private Color backcolor;
+        // Memorysaving via imageList
+        private List<Bitmap> images;
+        private List<AutoCompleteWord> items;
 
         #endregion
 
         #region Properties
 
         /// <summary>
-        /// Pattern of wanted chars
+        /// Returns the list of images
         /// </summary>
-        public string Regex
+        public List<Bitmap> Images
         {
             get
             {
-                return regex;
+                return images;
             }
         }
 
         /// <summary>
-        /// The Selection-Font
+        /// Returns the list of items
         /// </summary>
-        public Font Font
+        public List<AutoCompleteWord> Items
         {
             get
             {
-                return font;
-            }
-        }
-
-        /// <summary>
-        /// The Selection-Color
-        /// </summary>
-        public Color ForeColor
-        {
-            get
-            {
-                return forecolor;
-            }
-        }
-
-        /// <summary>
-        /// The Selection-BackColor
-        /// </summary>
-        public Color BackColor
-        {
-            get
-            {
-                return backcolor;
+                return items;
             }
         }
 
@@ -93,13 +61,11 @@ namespace Scripting.Controls
 
         #region Constructor
 
-        // Constructs a new SH, basically we just copy objects
-        public SyntaxHighlighting(string str, Font fnt, Color fc, Color bc)
+        // Creates an empty intellisense
+        public Intellisense()
         {
-            this.forecolor = fc;
-            this.backcolor = bc;
-            this.regex = str;
-            this.font = fnt;
+            this.images = new List<Bitmap>();
+            this.items = new List<AutoCompleteWord>();
             this.disposed = false;
         }
 
@@ -108,7 +74,7 @@ namespace Scripting.Controls
         #region Destructor
 
         // The standard destructor
-        ~SyntaxHighlighting()
+        ~Intellisense()
         {
             this.Dispose(false);
         }
@@ -128,17 +94,46 @@ namespace Scripting.Controls
                 if (disposing)
                 {
                     // Free other inheritors of IDisposable
-                    this.font.Dispose();
+                    foreach (var bmp in images)
+                    {
+                        bmp.Dispose();
+                    }
                 }
 
                 // Set objects to null
-                this.regex = null;
-                this.forecolor = empty;
-                this.backcolor = empty;
+                this.images.Clear();
+                this.items.Clear();
+                this.images = null;
+                this.items = null;
                 this.disposed = true;
             }
         }
 
         #endregion
+
+        #region Methods
+
+        // Adds items from stringlist
+        public void ParseItems(List<string> items, int index)
+        {
+            this.items.Clear();
+            foreach (string itemword in items)
+            {
+                var word = new AutoCompleteWord();
+                word.ImageIndex = index;
+                word.ItemWord = itemword;
+                this.items.Add(word);
+            }
+        }
+
+        #endregion
+    }
+
+    public struct AutoCompleteWord
+    {
+        // We should not waste Bitmaps...
+        // so we have a struct with an index
+        public int ImageIndex;
+        public string ItemWord;
     }
 }
