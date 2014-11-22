@@ -73,6 +73,7 @@ namespace Scripting.Controls
             set
             {
                 words = value;
+                AddItems();
             }
         }
 
@@ -123,12 +124,12 @@ namespace Scripting.Controls
             this.DoubleBuffered = true;
             this.SetStyle(style, true);
 
-            this.selectionBorderColor = Color.FromArgb(244, 244, 244);
+            this.selectionBorderColor = Color.FromArgb(216, 216, 216);
             this.selectionColor = Color.FromArgb(230, 230, 230);
             this.MaximumSize = new Size(200, ITEM_HEIGHT * 10);
-            this.words = new List<AutoCompleteWord>();
             this.ItemHeight = ITEM_HEIGHT;
             this.disposed = false;
+            this.AddItems();
         }
 
         #endregion
@@ -144,7 +145,8 @@ namespace Scripting.Controls
                 if (disposing)
                 {
                     // Free our list
-                    this.words.Clear();
+                    if (words != null)
+                        this.words.Clear();
                 }
 
                 // Set it to null
@@ -158,67 +160,65 @@ namespace Scripting.Controls
         #region Painting
 
         // Paints our custom items
-        protected override void OnPaint(PaintEventArgs e)
-        {
-            // Draw border
-            var pen = new Pen(Color.FromArgb(160, 160, 160));
-            var selected = this.SelectedIndex;
-            var bdrect = new Rectangle();
-
-            bdrect.X = e.ClipRectangle.X;
-            bdrect.Y = e.ClipRectangle.Y;
-            bdrect.Width = e.ClipRectangle.Width - 1;
-            bdrect.Height = e.ClipRectangle.Height - 1;
-
-            e.Graphics.DrawRectangle(pen, bdrect);
-
-            // Draw selection
-            if (selected != -1)
-            {
-                // Predefine variables
-                var bgbrush = new SolidBrush(selectionColor);
-                var selpen = new Pen(selectionBorderColor);
-                var rect = new Rectangle();
-
-                rect.Y = (4 + (selected * ITEM_HEIGHT));
-                rect.Height = ITEM_HEIGHT; rect.X = 1;
-                rect.Width = Width - 3;
-
-                // Draw border & bg
-                e.Graphics.FillRectangle(bgbrush, rect);
-                e.Graphics.DrawRectangle(selpen, rect);
-
-                // Clean-Up
-                bgbrush.Dispose();
-                selpen.Dispose();
-            }
-
-            // Clean-Up
-            pen.Dispose();
-        }
-
-        // Paints our custom items
         protected override void OnDrawItem(DrawItemEventArgs e)
         {
             // Draws each item with an image
             var index = e.Index;
-            var item = ((AutoCompleteWord)Items[index]);
 
-            var br = new SolidBrush(ForeColor);
-            var tx = new Point(18, 2);
-            var pnt = new Point(0, 0);
-
-            var txt = item.ItemWord;
-            e.Graphics.DrawString(txt, Font, br, tx);
-
-            if (imageList.Count != 0)
+            if (index != -1)
             {
-                var bmp = imageList[item.ImageIndex];
-                e.Graphics.DrawImage(bmp, pnt);
-            }
+                var item = ((AutoCompleteWord)Items[index]);
+                var br = new SolidBrush(ForeColor);
 
-            // Clean-Up
-            br.Dispose();
+                var tx = new Point(18, index * ITEM_HEIGHT);
+                var pnt = new Point(0, 0);
+                var txt = item.ItemWord;
+
+                // Draw selection
+                if ((e.State & DrawItemState.Selected) == DrawItemState.Selected)
+                {
+                    // Predefine variables
+                    var bgbrush = new SolidBrush(selectionColor);
+                    var selpen = new Pen(selectionBorderColor);
+
+                    var sz = new Size(e.Bounds.Width, ITEM_HEIGHT);
+                    var rect = new Rectangle(tx, sz); rect.X = 0;
+                    rect.Height--; rect.Width--;
+
+                    // Draw border & bg
+                    e.Graphics.FillRectangle(bgbrush, rect);
+                    e.Graphics.DrawRectangle(selpen, rect);
+
+                    // Clean-Up
+                    bgbrush.Dispose();
+                    selpen.Dispose();
+                }
+                else
+                {
+                    // Draw background
+                    // Draw border
+                    var bk = new SolidBrush(BackColor);
+                    var sz = new Size(e.Bounds.Width, ITEM_HEIGHT);
+                    var rect = new Rectangle(tx, sz); rect.X = 0;
+
+                    // Draw background
+                    e.Graphics.FillRectangle(bk, rect);
+
+                    // Clean-Up
+                    bk.Dispose();
+                }
+
+                e.Graphics.DrawString(txt, Font, br, tx);
+
+                if (imageList.Count != 0)
+                {
+                    var bmp = imageList[item.ImageIndex];
+                    e.Graphics.DrawImage(bmp, pnt);
+                }
+
+                // Clean-Up
+                br.Dispose();
+            }
         }
 
         // Trick the measureitem-eventargs for our image
@@ -240,7 +240,7 @@ namespace Scripting.Controls
             foreach (var item in words)
             {
                 this.Items.Add(item);
-            } this.Invalidate();
+            }
         }
 
         // Removes items from normal list.

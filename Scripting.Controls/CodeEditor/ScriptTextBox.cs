@@ -82,6 +82,37 @@ namespace Scripting.Controls
             }
         }
 
+        /// <summary>
+        /// Absolute displayed text
+        /// </summary>
+        public string DisplayedText
+        {
+            get
+            {
+                int startpos;
+                int endpos;
+
+                startpos = GetStartCharPos();
+                endpos = GetLastCharPos();
+
+                return Text.Substring(startpos, (endpos - startpos) + 1);
+            }
+        }
+
+        private int GetStartCharPos()
+        {
+            var upperleft = new Point(ClientRectangle.Left, 
+                ClientRectangle.Top + (FontHeight / 2));
+            return GetCharIndexFromPosition(upperleft);
+        }
+
+        private int GetLastCharPos()
+        {
+            var lowerright = new Point(ClientRectangle.Right,
+                ClientRectangle.Bottom);
+            return GetCharIndexFromPosition(lowerright);
+        }
+
         #endregion
 
         #region Constructor
@@ -118,4 +149,114 @@ namespace Scripting.Controls
 
         #endregion
     }
+
+    #region Native Methods
+
+    public class NativeMethods
+    {
+
+        [System.Runtime.InteropServices.DllImport("User32.dll")]
+        public static extern int SendMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Explicit, Size = 4)]
+        public struct MakeAParam
+        {
+
+            [FieldOffset(0)]
+            public Int32 Number;
+
+            [FieldOffset(0)]
+            public UInt16 LowWord;
+
+            [FieldOffset(2)]
+            public UInt16 HighWord;
+        }
+
+        public const int WM_VSCROLL = 0x115;
+        public const int SB_HORZ = 0;
+        public const int SB_VERT = 1;
+        public const int SB_PAGEDOWN = 3;
+        public const int SB_PAGEUP = 2;
+        public const int SB_LINEDOWN = 1;
+        public const int SB_LINEUP = 0;
+        public const int SB_TOP = 6;
+
+        public const int SB_ENDSCROLL = 8;
+        public const int WM_HSCROLL = 0x114;
+        public const int SB_LEFT = 6;
+        public const int SB_LINELEFT = 0;
+        public const int SB_LINERIGHT = 1;
+        public const int SB_PAGERIGHT = 3;
+        public const int SB_PAGELEFT = 2;
+
+        public const int SB_RIGHT = 7;
+    }
+
+    public class ScrollBarInfo
+    {
+        public enum VScrollBarCommands : uint
+        {
+            SB_LINEUP = 0,
+            SB_LINEDOWN = 1,
+            SB_PAGEUP = 2,
+            SB_PAGEDOWN = 3,
+            SB_TOP = 6,
+            SB_BOTTOM = 7,
+            SB_THUMBPOSITION = 4,
+            SB_THUMBTRACK = 5,
+            SB_ENDSCROLL = 8
+        }
+
+        public enum HScrollBarCommands : uint
+        {
+            SB_LINELEFT = 0,
+            SB_LINERIGHT = 1,
+            SB_PAGELEFT = 2,
+            SB_PAGERIGHT = 3,
+            SB_LEFT = 6,
+            SB_RIGHT = 7,
+            SB_THUMBPOSITION = 4,
+            SB_THUMBTRACK = 5,
+            SB_ENDSCROLL = 8
+        }
+
+        public enum ScrollBarType : int
+        {
+            SbHorz = 0,
+            SbVert = 1,
+            SbCtl = 2,
+            SbBoth = 3
+        }
+
+        [Flags]
+        public enum ScrollBarInfoFmask : int
+        {
+            Range = 0x1,
+            Page = 0x2,
+            Pos = 0x4,
+            DisableNoScroll = 0x8,
+            TrackPos = 0x10,
+            All = (Range | Page | Pos | TrackPos)
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct ScrollInfo
+        {
+            public int cbSize;
+            public int fMask;
+            public int nMin;
+            public int nMax;
+            public int nPage;
+            public int nPos;
+            public int nTrackPos;
+        }
+        
+        [DllImport("user32.dll")]
+        static extern int GetScrollInfo(IntPtr hWnd, int bar, ScrollInfo si);
+
+        [DllImport("user32.dll")]
+        static extern int SetScrollInfo(IntPtr hWnd, int bar, ScrollInfo si, bool redraw);
+    }
+
+    #endregion
 }

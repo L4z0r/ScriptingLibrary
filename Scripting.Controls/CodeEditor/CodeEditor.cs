@@ -11,6 +11,7 @@
 // GNU General Public License for more details.
 
 using System;
+using System.Text;
 using System.Drawing;
 using System.Windows.Forms;
 using System.ComponentModel;
@@ -230,6 +231,7 @@ namespace Scripting.Controls
 
         #region Constants
 
+        Color line_color = Color.FromArgb(230, 230, 230);
         const RegexOptions option = RegexOptions.Multiline;
         const AnchorStyles anchor = AnchorStyles.Bottom | AnchorStyles.Top
                 | AnchorStyles.Left | AnchorStyles.Right;
@@ -384,6 +386,11 @@ namespace Scripting.Controls
             this.DoubleBuffered = true;
             this.Anchor = anchor;
 
+            this.codeBorderColor = Color.FromArgb(160, 160, 160);
+            this.codeBackColor = Color.FromArgb(244, 244, 244);
+            this.lineBorderColor = Color.FromArgb(51, 153, 255);
+            this.lineBackColor = Color.FromArgb(158, 206, 255);
+
             this.scriptBox = new ScriptTextBox();
             this.ruleSets = new List<SyntaxHighlighting>();
 
@@ -402,6 +409,7 @@ namespace Scripting.Controls
             this.scriptBox.Location = pnt;
             this.scriptBox.Size = sze;
 
+            this.scriptBox.LineColor = line_color;
             this.scriptBox.BorderStyle = bds;
             this.scriptBox.Font = fnt;
 
@@ -445,133 +453,139 @@ namespace Scripting.Controls
         {
             try
             {
-                // Locks the update for smoothness purposes
-                LockWindowUpdate(this.scriptBox.Handle);
-
-                // Saves the current caret position and other vars
-                var caretpos = this.scriptBox.SelectionStart;
-                var length = this.scriptBox.TextLength;
-                var foreclr = this.scriptBox.ForeColor;
-                var scfont = this.scriptBox.Font;
-
-                // Only edits the visible text, for performance improvements
-                var pnt = new Point(0, 0);
-                var pnt2 = new Point(this.scriptBox.ClientSize.Width, 
-                    this.scriptBox.ClientSize.Height);
-                var first = this.scriptBox.GetCharIndexFromPosition(pnt);
-                var last = this.scriptBox.GetCharIndexFromPosition(pnt2);
-                var text = this.scriptBox.Text.Substring(first, last);
-
-                // Resets the whole selection colors
-                this.scriptBox.Select(0, length);
-                this.scriptBox.SelectionColor = foreclr;
-                this.scriptBox.SelectionFont = scfont;
-
-                // Selects all the regex stuff
-                foreach (var sh in ruleSets)
+                int textlength = scriptBox.TextLength;
+                if (textlength != 0)
                 {
-                    // Saves all the properties so we 
-                    // don't have to access them all the time
-                    var fore = sh.ForeColor;
-                    var back = sh.BackColor;
-                    var font = sh.Font;
-                    var str = sh.Regex;
-                    
-                    // Looks for any matches
-                    var match = Regex.Match(text, str, option);
-                    if (match.Success == true) {
-                        do {
-                            // Loops as long as there are matches
-                            // and selects them via match.Index.
-                            this.scriptBox.Select(match.Index, match.Length);
-                            this.scriptBox.SelectionBackColor = back;
-                            this.scriptBox.SelectionColor = fore;
-                            this.scriptBox.SelectionFont = font;
-                            match = match.NextMatch();
-                        } while (match.Success == true);
-                    }
-                }
 
-                // Now we reset the caret position,
-                // in preparation for intellisense.
-                this.scriptBox.Select(caretpos, 0);
+                    // Locks the update for smoothness purposes
+                    LockWindowUpdate(this.scriptBox.Handle);
 
-                // Now we see if the current line is a PART
-                // or is the WHOLE of an autocomplete-word. 
-                if (this.scriptBox.Lines.Length > 0)
-                {
-                    // Receive the line number and gets the whole line as string
-                    int linenumber = this.scriptBox.GetLineFromCharIndex(caretpos);
-                    var sublinetext = this.scriptBox.Lines[linenumber];
+                    // Saves the current caret position and other vars
+                    var caretpos = this.scriptBox.SelectionStart;
+                    var length = this.scriptBox.TextLength;
+                    var foreclr = this.scriptBox.ForeColor;
+                    var scfont = this.scriptBox.Font;
 
-                    // Check if this line even contains something ... performance =)
-                    if (sublinetext.Length > 0)
+                    // Only edits the visible text, for performance improvements
+                    string text = this.scriptBox.DisplayedText;
+
+                    // Resets the whole selection colors
+                    this.scriptBox.Select(0, length);
+                    this.scriptBox.SelectionColor = foreclr;
+                    this.scriptBox.SelectionFont = scfont;
+
+                    // Selects all the regex stuff
+                    foreach (var sh in ruleSets)
                     {
-                        // We need a list of string for items in the intellibox
-                        // and to escape the line to prevent errors
-                        var founditems = new List<string>();
-                        var escape = Regex.Escape(sublinetext);
+                        // Saves all the properties so we 
+                        // don't have to access them all the time
+                        var fore = sh.ForeColor;
+                        var back = sh.BackColor;
+                        var font = sh.Font;
+                        var str = sh.Regex;
 
-                        // Loop through all the intelliwords and
-                        // add to founditems if there is a match
-                        foreach (var word in autocompleteWords.Items)
+                        // Looks for any matches
+                        var match = Regex.Match(text, str, option);
+                        if (match.Success == true)
                         {
-                            var itemword = word.ItemWord;
-                            if (Regex.IsMatch(itemword, escape))
+                            do
                             {
-                                founditems.Add(itemword);
-                            }
+                                // Loops as long as there are matches
+                                // and selects them via match.Index.
+                                this.scriptBox.Select(match.Index, match.Length);
+                                this.scriptBox.SelectionBackColor = back;
+                                this.scriptBox.SelectionColor = fore;
+                                this.scriptBox.SelectionFont = font;
+                                match = match.NextMatch();
+                            } while (match.Success == true);
                         }
+                    }
 
-                        // If no items found, overjump this part
-                        var foundcount = founditems.Count;
-                        if (foundcount != 0)
+                    // Now we reset the caret position,
+                    // in preparation for intellisense.
+                    this.scriptBox.Select(caretpos, 0);
+
+                    // Now we see if the current line is a PART
+                    // or is the WHOLE of an autocomplete-word. 
+                    if (this.scriptBox.Lines.Length > 0)
+                    {
+                        // Receive the line number and gets the whole line as string
+                        int linenumber = this.scriptBox.GetLineFromCharIndex(caretpos);
+                        var sublinetext = this.scriptBox.Lines[linenumber];
+
+                        // Check if this line even contains something ... performance =)
+                        if (sublinetext.Length > 0)
                         {
-                            if (intellisenseActive == false)
+                            // We need a list of string for items in the intellibox
+                            // and to escape the line to prevent errors
+                            var founditems = new List<string>();
+                            var escape = Regex.Escape(sublinetext);
+
+                            // Loop through all the intelliwords and
+                            // add to founditems if there is a match
+                            foreach (var word in autocompleteWords.Items)
                             {
-                                // There is no intellibox yet - let's create one!
-                                this.autocompleteWords.ParseItems(founditems, 0);
-                                this.intellisenseBox = new ScriptListBox(autocompleteWords);
+                                var itemword = word.ItemWord;
+                                if (Regex.IsMatch(itemword, escape))
+                                {
+                                    founditems.Add(itemword);
+                                }
+                            }
 
-                                // Predefines some variables
-                                var caretpoint = this.scriptBox.CaretPoint;
-                                var point = new Point(caretpoint.X, 
-                                    caretpoint.Y + MeasureScriptBoxHeight());
-                                var size = new Size(200, (8 + (16 * foundcount)));
+                            // If no items found, overjump this part
+                            var foundcount = founditems.Count;
+                            if (foundcount != 0)
+                            {
+                                if (intellisenseActive == false)
+                                {
+                                    // There is no intellibox yet - let's create one!
+                                    this.intellisenseBox = new ScriptListBox(ParseItems(founditems, 0));
 
-                                // Sets properties for intellibox
-                                this.intellisenseBox.Size = size;
-                                this.intellisenseBox.Location = point;
-                                this.intellisenseBox.KeyDown += OnMenuKey;
+                                    // Predefines some variables
+                                    var caretpoint = this.scriptBox.CaretPoint;
+                                    var point = new Point(caretpoint.X,
+                                        caretpoint.Y + MeasureScriptBoxHeight());
+                                    var size = new Size(200, (8 + (16 * foundcount)));
 
-                                // Finally adds it to our textbox
-                                this.scriptBox.Controls.Add(intellisenseBox);
-                                this.intellisenseActive = true;
-                                founditems.Clear();
+                                    // Sets properties for intellibox
+                                    this.intellisenseBox.Size = size;
+                                    this.intellisenseBox.Location = point;
+                                    this.intellisenseBox.KeyDown += OnMenuKey;
+
+                                    // Finally adds it to our textbox
+                                    this.scriptBox.Controls.Add(intellisenseBox);
+                                    this.intellisenseActive = true;
+                                    founditems.Clear();
+                                }
+                                else
+                                {
+                                    // Update the intellibox
+                                    this.intellisenseBox.RemoveItems();
+                                    this.intellisenseBox.Words = ParseWords(founditems, 0);
+
+                                    // Update the position & size
+                                    var caretpoint = this.scriptBox.CaretPoint;
+                                    var point = new Point(caretpoint.X,
+                                        caretpoint.Y + MeasureScriptBoxHeight());
+                                    var size = new Size(200, (8 + (16 * foundcount)));
+
+                                    this.intellisenseBox.Size = size;
+                                    this.intellisenseBox.Location = point;
+                                    founditems.Clear();
+                                }
                             }
                             else
                             {
-                                // Update our private intellisense
-                                this.autocompleteWords.ParseItems(founditems, 0);
-
-                                // Update the intellibox
-                                this.intellisenseBox.RemoveItems();
-                                this.intellisenseBox.Words = autocompleteWords.Items;
-
-                                // Update the position & size
-                                var caretpoint = this.scriptBox.CaretPoint;
-                                var point = new Point(caretpoint.X,
-                                    caretpoint.Y + MeasureScriptBoxHeight());
-                                var size = new Size(200, (8 + (16 * foundcount)));
-
-                                this.intellisenseBox.Size = size;
-                                this.intellisenseBox.Location = point;
-                                founditems.Clear();
+                                // There are no items, so hide intellibox
+                                if (this.intellisenseActive == true)
+                                {
+                                    this.DisposeIntellisense();
+                                }
                             }
                         }
                         else
                         {
-                            // There are no items, so hide intellibox
+                            // Hides the intellibox because no words can be displayed
                             if (this.intellisenseActive == true)
                             {
                                 this.DisposeIntellisense();
@@ -580,19 +594,11 @@ namespace Scripting.Controls
                     }
                     else
                     {
-                        // Hides the intellibox because no words can be displayed
+                        // No lines, no words, no intellisense =)
                         if (this.intellisenseActive == true)
                         {
                             this.DisposeIntellisense();
                         }
-                    }
-                }
-                else
-                {
-                    // No lines, no words, no intellisense =)
-                    if (this.intellisenseActive == true)
-                    {
-                        this.DisposeIntellisense();
                     }
                 }
             }
@@ -601,7 +607,7 @@ namespace Scripting.Controls
                 // Unlock update for proper eventlogic
                 // and redraw the whole CodeEditor
                 LockWindowUpdate(IntPtr.Zero);
-                Invalidate(); Regex.CacheSize = 0x0;
+                Invalidate(true); Regex.CacheSize = 0x0;
             }
         }
 
@@ -711,10 +717,38 @@ namespace Scripting.Controls
                 array[linenumber] = item;
 
                 // Now copy all the lines back to the textbox
-                this.scriptBox.SelectionStart = selection;
                 this.scriptBox.Lines = array;
+                this.scriptBox.SelectionStart = selection;
                 this.scriptBox.Focus();
             }
+        }
+
+        // Creates a new intellisense struct from found strings
+        private Intellisense ParseItems(List<string> found, int index)
+        {
+            var sense = new Intellisense();
+
+            foreach (string itemword in found)
+            {
+                var word = new AutoCompleteWord();
+                word.ImageIndex = index;
+                word.ItemWord = itemword;
+                sense.Items.Add(word);
+            } return sense;
+        }
+
+        // Creates a new list of intelliwords from found strings
+        private List<AutoCompleteWord> ParseWords(List<string> found, int index)
+        {
+            var list = new List<AutoCompleteWord>();
+
+            foreach (string itemword in found)
+            {
+                var word = new AutoCompleteWord();
+                word.ImageIndex = index;
+                word.ItemWord = itemword;
+                list.Add(word);
+            } return list;
         }
 
         #endregion
@@ -751,7 +785,7 @@ namespace Scripting.Controls
             int currLine = scriptBox.GetLineFromCharIndex(selection);
 
             // Draws the line-selection
-            var bdrect = new Rectangle(1, (currLine * scriptheight + 1), 47, scriptheight - 1);
+            var bdrect = new Rectangle(1, (currLine * scriptheight + 1), 46, scriptheight - 1);
             var inrect = new Rectangle(2, (currLine * scriptheight + 2), 46, scriptheight - 2);
 
             var pen = new Pen(this.lineBorderColor);
